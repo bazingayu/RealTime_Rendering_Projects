@@ -425,9 +425,9 @@ GLuint CompileShaders(const char* vertexShader, const char* fragmentShader)
 }
 #pragma endregion SHADER_FUNCTIONS
 
-unsigned int loadCubemap(vector<std::string> faces)
+GLuint loadCubemap(vector<std::string> faces)
 {
-	unsigned int skyboxTextureID;
+	GLuint skyboxTextureID;
 	glGenTextures(1, &skyboxTextureID);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTextureID);
 
@@ -964,9 +964,9 @@ void display() {
         glUniformMatrix4fv(glGetUniformLocation(textShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
 
         RenderText(textShaderProgramID, "Chromatic Dispersion", 320.0f, 580.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "RGB=(0.15,0.17,0.19)", 50.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        RenderText(textShaderProgramID, "RGB=(0.95,0.97,0.99)", 50.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
         RenderText(textShaderProgramID, "RGB=(0.57,0.59,0.61)", 320.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "RGB=(0.95,0.97,0.99)", 550.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        RenderText(textShaderProgramID, "RGB=(0.15,0.17,0.19)", 550.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
 
 
 	}
