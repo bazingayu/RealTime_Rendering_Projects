@@ -14,7 +14,11 @@
 // GLM includes
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
+glm::vec3 axis;
 
 // Assimp includes
 #include <assimp/cimport.h> 
@@ -26,11 +30,7 @@
 #include FT_FREETYPE_H
 
 FT_Library ft;
-
-
 FT_Face face;
-
-
 
 // Loading photos
 #define STB_IMAGE_IMPLEMENTATION
@@ -39,13 +39,18 @@ FT_Face face;
 // Project includes
 #include "maths_funcs.h"
 
+GLfloat rotate_x_angle = 0.0f;
+GLfloat rotate_y_angle = 0.0f;
+GLfloat rotate_z_angle = 0.0f;
+GLfloat propeller_angle = 0.0f;
+
 
 /*----------------------------------------------------------------------------
 MESH TO LOAD
 ----------------------------------------------------------------------------*/
-#define SQUARE_MESH "./models/sphere.dae"
-#define BACKPACK_MESH "./models/teapot.dae"
-#define TEAPOT_MESH "./models/square.dae"
+#define SQUARE_MESH "./models/airplane.obj"
+#define BACKPACK_MESH "./models/airplane_part.obj"
+#define TEAPOT_MESH "./models/airplane.obj"
 /*----------------------------------------------------------------------------
 ----------------------------------------------------------------------------*/
 
@@ -53,9 +58,6 @@ MESH TO LOAD
 glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 12.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-glm::vec3 startingCameraPosition = glm::vec3(0.0f, 0.0f, 12.0f);
-glm::vec3 startingCameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 startingCameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
 #pragma region SimpleTypes
@@ -69,7 +71,7 @@ typedef struct
 #pragma endregion SimpleTypes
 
 using namespace std;
-GLuint reflectionShaderProgramID, refractionShaderProgramID, fresnelShaderProgramID, chromaticDispersionShaderProgramID, skyboxShaderProgramID, textShaderProgramID;
+GLuint reflectionShaderProgramID, skyboxShaderProgramID, textShaderProgramID;
 
 ModelData mesh_data;
 int width = 800;
@@ -84,27 +86,20 @@ GLuint VAO[i], VBO[i * 2];
 std::vector < ModelData > meshData;
 std::vector < const char* > dataArray;
 
-float eta = 0.5;
-float etaR = 0.65;
-float etaG = 0.67;
-float etaB = 0.69;
-float fPower;
-bool key1 = true;
-bool key2 = false;
-bool key3 = false;
-bool key4 = false;
-bool key5 = false;
+bool quan = false;
+
+
 // ------------ SKYBOX ------------
 unsigned int skyboxVAO, skyboxVBO;
 unsigned int cubemapTexture;
 vector<std::string> faces
 {
-	"./skybox/x+.jpg",
-	"./skybox/x-.jpg",
-	"./skybox/y+.jpg",
-	"./skybox/y-.jpg",
-	"./skybox/z+.jpg",
-	"./skybox/z-.jpg"
+	"./skybox/1x+.png",
+	"./skybox/1x-.png",
+	"./skybox/1y+.png",
+	"./skybox/1y-.png",
+	"./skybox/1z+.png",
+	"./skybox/1z-.png"
 };
 #pragma region SKYBOX
 float skyboxVertices[] = {
@@ -455,7 +450,7 @@ void generateObjectBufferMesh(std::vector < const char* > dataArray) {
 	----------------------------------------------------------------------------*/
 
 	loc1 = glGetAttribLocation(reflectionShaderProgramID, "vertex_position");
-	loc2 = glGetAttribLocation(reflectionShaderProgramID, "vertex_normal");
+	loc2 = glGetAttribLocation(reflectionShaderProgramID, "vertex_normals");
 	//loc3 = glGetAttribLocation(shaderProgramID, "vertex_texture");
 	int counter = 0;
 	for (int i = 0; i < dataArray.size(); i++) {
@@ -517,460 +512,95 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	// View and Projection
-	glm::mat4 view = glm::mat4(1.0f);
-	view = glm::lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp);
-	if (key1) {
-		view = glm::lookAt(startingCameraPosition, startingCameraPosition + startingCameraFront, startingCameraUp);
-	}
+	glm::mat4 view = glm::mat4(0.1f);
+    view = glm::lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp);
 	glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 1000.0f);
 
-	// ------------------------------------------------- SKYBOX ------------------------------------------------- 
 	glDepthFunc(GL_LEQUAL);
 	glUseProgram(skyboxShaderProgramID);
-
-	glUniformMatrix4fv(glGetUniformLocation(skyboxShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(skyboxShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 	glUniformMatrix4fv(glGetUniformLocation(skyboxShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
-
 	glBindVertexArray(skyboxVAO);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
-	glDepthFunc(GL_LESS);
-	glDepthMask(GL_TRUE);
 
-	// ------------------------------------------------- MODEL -------------------------------------------------
-
-
-	glm::mat4 model = glm::mat4(1.0f);
-	if (key1) {
-        // Square reflect
+    glEnable(GL_DEPTH_TEST); // enable depth-testing
+    glMatrixMode(GL_PROJECTION);
+    glDepthFunc(GL_LESS); // depth-testing interprets a smaller value as "closer"
+    glm::mat4 model = glm::mat4(1.0f);
+    if(!quan) {
         glUseProgram(reflectionShaderProgramID);
         glBindVertexArray(VAO[2]);
         glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
-
-        model = glm::translate(model, glm::vec3(-2.5f, 2.5f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::eulerAngleYXZ(glm::radians(rotate_y_angle), glm::radians(rotate_x_angle),
+                                   glm::radians(rotate_z_angle));
+        model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
         glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "model"), 1, GL_FALSE,
                            glm::value_ptr(model));
-
         glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        //Square refraction
-        glUseProgram(refractionShaderProgramID);
-        glBindVertexArray(VAO[2]);
-        glUniformMatrix4fv(glGetUniformLocation(refractionShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(refractionShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
-
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(2.5f, 2.5f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniformMatrix4fv(glGetUniformLocation(refractionShaderProgramID, "model"), 1, GL_FALSE,
-                           glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        //square fresnel
-        glUseProgram(fresnelShaderProgramID);
-        glBindVertexArray(VAO[2]);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
-
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-2.5f, -2.5f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        glUseProgram(chromaticDispersionShaderProgramID);
-        glBindVertexArray(VAO[2]);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "view"), 1, GL_FALSE,
-                           glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "proj"), 1, GL_FALSE,
-                           glm::value_ptr(proj));
-
-
-        fPower = 2.0;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(2.5f, -2.5f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE,
-                           glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
-        glUseProgram(textShaderProgramID);
-        glUniformMatrix4fv(glGetUniformLocation(textShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
-        RenderText(textShaderProgramID, "Reflection", 200.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "Refraction", 500.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "fresnel", 200.0f, 230.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "Chromatic Dispersion", 450.0f, 230.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-
-    }
-
-
-
-	if (key2) {
-        glUseProgram(reflectionShaderProgramID);
+        // hierarchy
+        glBindVertexArray(VAO[1]);
         glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
-        // sphere
-        glBindVertexArray(VAO[0]);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 model_propeller = glm::mat4(1.0f);
+        model_propeller = glm::rotate(model_propeller, glm::radians(propeller_angle), glm::vec3(0.0f, 0.0f, 1.0f));
+        model_propeller = model * model_propeller;
+        glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "model"), 1, GL_FALSE,glm::value_ptr(model_propeller));
+        glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
+    }
+    else{
+        glm::mat4 model = glm::mat4(1.0f);
+        glUseProgram(reflectionShaderProgramID);
+        glBindVertexArray(VAO[2]);
+        glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
+        glm::qua<float> q = glm::qua<float>(glm::radians(glm::vec3(rotate_x_angle, rotate_y_angle, rotate_z_angle))); //创建一个绕z轴旋转90度的四元数
+        model = glm::mat4_cast(q) * model;
+        model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
         glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[0].mPointCount);
-		// teapot
-		glBindVertexArray(VAO[1]);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(-4.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
-
-		// Square
-		glBindVertexArray(VAO[2]);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(4.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
-        glUseProgram(textShaderProgramID);
-        glUniformMatrix4fv(glGetUniformLocation(textShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
-        RenderText(textShaderProgramID, "reflection", 350.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-    }
-
-    if (key3) {
-        // Refraction
-        glUseProgram(refractionShaderProgramID);
-        glBindVertexArray(VAO[0]);
-        glUniformMatrix4fv(glGetUniformLocation(refractionShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(refractionShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
-		// teapot
-        glBindVertexArray(VAO[0]);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniformMatrix4fv(glGetUniformLocation(refractionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[0].mPointCount);
-
-		glBindVertexArray(VAO[1]);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(-4.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniformMatrix4fv(glGetUniformLocation(refractionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
-
-		// Teapot
-		glBindVertexArray(VAO[2]);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(4.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniformMatrix4fv(glGetUniformLocation(refractionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
-        glUseProgram(textShaderProgramID);
-        glUniformMatrix4fv(glGetUniformLocation(textShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
-        RenderText(textShaderProgramID, "refraction", 350.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-
-    }
-
-
-	if (key4) {
-        // Fresnel
-        glUseProgram(fresnelShaderProgramID);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
-
-        //square eta = 0.5
-        glBindVertexArray(VAO[0]);
-        eta = 0.5;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[0].mPointCount);
-
-        //square eta = 0.1
-        eta = 0.1;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-5.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[0].mPointCount);
-
-        // square eta = 0.8
-        eta = 0.8;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(5.0f, 0.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[0].mPointCount);
-
-		// Teapot
-		glBindVertexArray(VAO[1]);
-		eta = 0.5;
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, 3.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-		glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
-
-		eta = 0.1;
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(-5.0f, 3.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-		glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
-
-		eta = 0.8;
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(5.0f, 3.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-		glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
-
-        // square
-        glBindVertexArray(VAO[2]);
-        eta = 0.5;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
         glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        eta = 0.1;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-5.0f, -3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        eta = 0.8;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(5.0f, -3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(fresnelShaderProgramID, "eta"), eta);
-        glUniformMatrix4fv(glGetUniformLocation(fresnelShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
-        glUseProgram(textShaderProgramID);
-        glUniformMatrix4fv(glGetUniformLocation(textShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
-
-        RenderText(textShaderProgramID, "fresnel", 380.0f, 580.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "ratio=0.1", 150.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "ratio=0.5", 380.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "ratio=0.8", 600.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-
-    }
-
-	if (key5) {
-        // Chromatic Dispersion
-        glUseProgram(chromaticDispersionShaderProgramID);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
-		// Sphere
-		fPower = 0.5;
-		glBindVertexArray(VAO[0]);
-		etaR = 0.57;
-		etaG = 0.59;
-		etaB = 0.61;
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-		glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[0].mPointCount);
-
-		etaR = 0.95;
-		etaG = 0.97;
-		etaB = 0.99;
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(-5.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-		glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[0].mPointCount);
-
-		etaR = 0.15;
-		etaG = 0.17;
-		etaB = 0.19;
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(5.0f, 0.0f, 0.0f));
-		model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-		glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-		glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLES, 0, meshData[0].mPointCount);
-
-        //teapot
-        fPower = 0.5;
+        // hierarchy
         glBindVertexArray(VAO[1]);
-        etaR = 0.57;
-        etaG = 0.59;
-        etaB = 0.61;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, 3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
+        glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(proj));
+        glm::mat4 model_propeller = glm::mat4(1.0f);
+        model_propeller = glm::rotate(model_propeller, glm::radians(propeller_angle), glm::vec3(0.0f, 0.0f, 1.0f));
+        model_propeller = model * model_propeller;
+        glUniformMatrix4fv(glGetUniformLocation(reflectionShaderProgramID, "model"), 1, GL_FALSE,glm::value_ptr(model_propeller));
         glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
-
-        // Teapot
-        etaR = 0.95;
-        etaG = 0.97;
-        etaB = 0.99;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-5.0f, 3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
-
-        // Teapot
-        etaR = 0.15;
-        etaG = 0.17;
-        etaB = 0.19;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(5.0f, 3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[1].mPointCount);
-
-        // square
-        fPower = 0.5;
-        glBindVertexArray(VAO[2]);
-        etaR = 0.57;
-        etaG = 0.59;
-        etaB = 0.61;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.0f, -3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        // Teapot
-        etaR = 0.95;
-        etaG = 0.97;
-        etaB = 0.99;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-5.0f, -3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
-
-        // Teapot
-        etaR = 0.15;
-        etaG = 0.17;
-        etaB = 0.19;
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(5.0f, -3.0f, 0.0f));
-        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
-        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
-        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
+    }
 
 
-        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
+
+
+    //text
+    if(!quan){
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
         glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
         glUseProgram(textShaderProgramID);
         glUniformMatrix4fv(glGetUniformLocation(textShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
-
-        RenderText(textShaderProgramID, "Chromatic Dispersion", 320.0f, 580.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "RGB=(0.95,0.97,0.99)", 50.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "RGB=(0.57,0.59,0.61)", 320.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-        RenderText(textShaderProgramID, "RGB=(0.15,0.17,0.19)", 550.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
-
-
-	}
-
+        RenderText(textShaderProgramID, "Euler rotate", 350.0f, 580.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        RenderText(textShaderProgramID, "pitch = " + to_string(rotate_x_angle), 50.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        RenderText(textShaderProgramID, "yaw = " + to_string(rotate_y_angle), 320.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        RenderText(textShaderProgramID, "roll = " + to_string(rotate_z_angle), 550.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        if(int(rotate_x_angle) == 90 || int(rotate_y_angle) == 90 || int(rotate_z_angle) == 90){
+            RenderText(textShaderProgramID, "Gimbal-locked", 300.0f, 100.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        }
+    }
+    else{
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
+        glUseProgram(textShaderProgramID);
+        glUniformMatrix4fv(glGetUniformLocation(textShaderProgramID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
+        RenderText(textShaderProgramID, "Overcome gimbal-lock using quaternions", 200.0f, 580.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        RenderText(textShaderProgramID, "x = " + to_string(rotate_x_angle), 50.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        RenderText(textShaderProgramID, "y = " + to_string(rotate_y_angle), 320.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+        RenderText(textShaderProgramID, "z = " + to_string(rotate_z_angle), 550.0f, 550.0f, 0.8f, glm::vec3(1.0f, 0.0f, 0.0f));
+    }
 
 
 	glutSwapBuffers();
@@ -986,6 +616,8 @@ void updateScene() {
 	delta = (curr_time - last_time) * 0.001f;
 	last_time = curr_time;
 
+    propeller_angle += 5.0f;
+
 	// Rotate the model slowly around the y axis at 20 degrees per second
 	rotate_y += 25.0f * delta;
 	rotate_y = fmodf(rotate_y, 360.0f);
@@ -998,10 +630,7 @@ void updateScene() {
 void init()
 {
     // Set up the shaders
-	reflectionShaderProgramID = CompileShaders("./shaders/modelVertexShader.txt", "./shaders/reflectionFragmentShader.txt");
-	refractionShaderProgramID = CompileShaders("./shaders/modelVertexShader.txt", "./shaders/refractionFragmentShader.txt");
-	fresnelShaderProgramID = CompileShaders("./shaders/modelVertexShader.txt", "./shaders/fresnelFragmentShader.txt");
-	chromaticDispersionShaderProgramID = CompileShaders("./shaders/modelVertexShader.txt", "./shaders/chromaticDispersionFragmentShader.txt");
+	reflectionShaderProgramID = CompileShaders("./shaders/simpleVertexShader.txt", "./shaders/phongFragmentShader.txt");
 	skyboxShaderProgramID = CompileShaders("./shaders/skyboxVertexShader.txt", "./shaders/skyboxFragmentShader.txt");
 	textShaderProgramID = CompileShaders("./shaders/textVertexShader.txt", "./shaders/textFragmentShader.txt");
 	// Skybox
@@ -1020,97 +649,31 @@ void init()
 
 // Placeholder code for the keypress
 void keypress(unsigned char key, int x, int y) {
-	float cameraSpeed = 300.0f * delta;
 	switch (key) {
 	case '1':
-		key1 = true;
-		key2 = false;
-		key3 = false;
-		key4 = false;
-		key5 = false;
-		break;
+		rotate_x_angle += 10.0f;
+        break;
 	case '2':
-		cameraPosition = startingCameraPosition; 
-		cameraFront = startingCameraFront; 
-		cameraUp = startingCameraUp;
-		cameraPosition.z = 16.0f;
-		key1 = false;
-		key3 = false;
-		key4 = false;
-		key5 = false;
-		key2 = true;
+		rotate_x_angle -= 10.0f;
 		break;
 	case '3':
-		cameraPosition = startingCameraPosition;
-		cameraFront = startingCameraFront;
-		cameraUp = startingCameraUp;
-		cameraPosition.z = 16.0f;
-		key1 = false;
-		key2 = false;
-		key4 = false;
-		key5 = false;
-		key3 = true;
+		rotate_y_angle += 10.0f;
 		break;
 	case '4':
-		cameraPosition = startingCameraPosition;
-		cameraFront = startingCameraFront;
-		cameraUp = startingCameraUp;
-		cameraPosition.z = 14.0f;
-		key1 = false;
-		key2 = false;
-		key3 = false;
-		key5 = false;
-		key4 = true;
+		rotate_y_angle -= 10.0f;
 		break;
 	case '5':
-		cameraPosition = startingCameraPosition;
-		cameraFront = startingCameraFront;
-		cameraUp = startingCameraUp;
-		cameraPosition.z = 14.0f;
-		key1 = false;
-		key2 = false;
-		key3 = false;
-		key4 = false;
-		key5 = true;
+		rotate_z_angle += 10.0f;
 		break;
-	case 'a':
-		if (!key1) {
-			cameraPosition -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-		}
-		break;
-	case 'b':
-		cameraFront.z *= -1.0;
-		break;
-		// Move Camera Right
-	case 'd':
-		if (!key1) {
-			cameraPosition += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-		}
-		break;
-		// Move Camera Down
-	case 'j':
-		if (!key1) {
-			cameraPosition -= cameraSpeed * up;
-		}
-		break;
-		// Move Camera Backwards
-	case 's':
-		if (!key1) {
-			cameraPosition -= cameraSpeed * cameraFront;
-		}
-		break;
-		// Move Camera Up
-	case 'u':
-		if (!key1) {
-			cameraPosition += cameraSpeed * up;
-		}
-		break;
-		 //Move Camera Forwards
-	case 'w':
-		if (!key1) {
-			cameraPosition += cameraSpeed * cameraFront;
-		}
-		break;
+    case '6':
+        rotate_z_angle -= 10.0f;
+        break;
+    case 'q':
+        quan = !quan;
+        rotate_x_angle = 0.0f;
+        rotate_y_angle = 0.0f;
+        rotate_z_angle = 0.0f;
+        break;
 	}
 }
 
@@ -1120,7 +683,7 @@ int main(int argc, char** argv) {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowSize(width, height);
-	glutCreateWindow("Lab 2 Transmittance Effects");
+	glutCreateWindow("Lab 1");
 
 	// Tell glut where the display function is
 	glutDisplayFunc(display);
