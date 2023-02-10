@@ -94,17 +94,18 @@ bool key2 = false;
 bool key3 = false;
 bool key4 = false;
 bool key5 = false;
+bool key6 = false;
 // ------------ SKYBOX ------------
 unsigned int skyboxVAO, skyboxVBO;
 unsigned int cubemapTexture;
 vector<std::string> faces
 {
-	"./skybox/x+.jpg",
-	"./skybox/x-.jpg",
-	"./skybox/y+.jpg",
-	"./skybox/y-.jpg",
-	"./skybox/z+.jpg",
-	"./skybox/z-.jpg"
+	"./skybox/1x+.png",
+	"./skybox/1x-.png",
+	"./skybox/1y+.png",
+	"./skybox/1y-.png",
+	"./skybox/1z+.png",
+	"./skybox/1z-.png"
 };
 #pragma region SKYBOX
 float skyboxVertices[] = {
@@ -970,6 +971,54 @@ void display() {
 
 
 	}
+    if(key6){
+        // Teapot
+        fPower = 2.0;
+        glBindVertexArray(VAO[2]);
+        etaR = 0.57;
+        etaG = 0.59;
+        etaB = 0.61;
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
+        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
+
+        // Teapot
+        etaR = 0.95;
+        etaG = 0.97;
+        etaB = 0.99;
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-5.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
+        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
+
+        // Teapot
+        etaR = 0.15;
+        etaG = 0.17;
+        etaB = 0.19;
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(5.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaR"), etaR);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaG"), etaG);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "etaB"), etaB);
+        glUniform1f(glGetUniformLocation(chromaticDispersionShaderProgramID, "fPower"), fPower);
+        glUniformMatrix4fv(glGetUniformLocation(chromaticDispersionShaderProgramID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+        glDrawArrays(GL_TRIANGLES, 0, meshData[2].mPointCount);
+    }
 
 
 
@@ -1028,6 +1077,7 @@ void keypress(unsigned char key, int x, int y) {
 		key3 = false;
 		key4 = false;
 		key5 = false;
+        key6 = false;
 		break;
 	case '2':
 		cameraPosition = startingCameraPosition; 
@@ -1039,6 +1089,7 @@ void keypress(unsigned char key, int x, int y) {
 		key4 = false;
 		key5 = false;
 		key2 = true;
+        key6 = false;
 		break;
 	case '3':
 		cameraPosition = startingCameraPosition;
@@ -1050,6 +1101,7 @@ void keypress(unsigned char key, int x, int y) {
 		key4 = false;
 		key5 = false;
 		key3 = true;
+        key6 = false;
 		break;
 	case '4':
 		cameraPosition = startingCameraPosition;
@@ -1061,6 +1113,7 @@ void keypress(unsigned char key, int x, int y) {
 		key3 = false;
 		key5 = false;
 		key4 = true;
+        key6 = false;
 		break;
 	case '5':
 		cameraPosition = startingCameraPosition;
@@ -1072,7 +1125,20 @@ void keypress(unsigned char key, int x, int y) {
 		key3 = false;
 		key4 = false;
 		key5 = true;
+        key6 = false;
 		break;
+    case '6':
+        cameraPosition = startingCameraPosition;
+        cameraFront = startingCameraFront;
+        cameraUp = startingCameraUp;
+        cameraPosition.z = 14.0f;
+        key1 = false;
+        key2 = false;
+        key3 = false;
+        key4 = false;
+        key5 = false;
+        key6 = true;
+        break;
 	case 'a':
 		if (!key1) {
 			cameraPosition -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;

@@ -19,7 +19,7 @@ LINK_DIRECTORIES("${PROJECT_DIR}/freetype/lib/win32")
 LINK_DIRECTORIES("${PROJECT_DIR}/glew-1.10.0/lib/Release/Win32")
 
 add_executable(assignment2
-        source/main.cpp
+        source/mainLab3.cpp
         source/maths_funcs.cpp)
 
 target_link_libraries(${PROJECT_NAME} "freeglut.lib")
