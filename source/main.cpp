@@ -674,6 +674,12 @@ void keypress(unsigned char key, int x, int y) {
         rotate_y_angle = 0.0f;
         rotate_z_angle = 0.0f;
         break;
+    case 'Q':
+        quan = !quan;
+        rotate_x_angle = 0.0f;
+        rotate_y_angle = 0.0f;
+        rotate_z_angle = 0.0f;
+        break;
 	}
 }
 
