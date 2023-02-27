@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
-project(assignment2)
+project(assignment1)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(PROJECT_DIR "D:/Projects/realtime_rendering/assignment2")
+set(PROJECT_DIR "D:/Projects/realtime_animation/assignment1")
 include_directories(${PROJECT_DIR})
 include_directories(${PROJECT_DIR}/fonts)
 include_directories(${PROJECT_DIR}/source)
@@ -18,8 +18,13 @@ LINK_DIRECTORIES("${PROJECT_DIR}/assimp/lib/Debug")
 LINK_DIRECTORIES("${PROJECT_DIR}/freetype/lib/win32")
 LINK_DIRECTORIES("${PROJECT_DIR}/glew-1.10.0/lib/Release/Win32")
 
+<<<<<<< HEAD
 add_executable(assignment2
         source/mainLab4.cpp
+=======
+add_executable(assignment1
+        source/main.cpp
+>>>>>>> 9ea91db328f79f54cff95ba1ebe51bbce5fd115f
         source/maths_funcs.cpp)
 
 target_link_libraries(${PROJECT_NAME} "freeglut.lib")
