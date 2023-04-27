@@ -8,6 +8,8 @@ Lab3 : source/mainLab3.cpp
 
 Lab4 : source/mainLab4.cpp  
 
+Final Project : source/Final.cpp
+
 
 You can easily deploy the code by changing the *executable* parameter to different main function in Cmakelist.txt
 
@@ -16,6 +18,9 @@ The Youtube Link for Lab2 is : https://www.youtube.com/watch?v=FPpnyY7bS_w
 The Youtube Link for Lab3 is : https://www.youtube.com/watch?v=fRUcdvhmn9w  
 
 The Youtube Link for Lab4 is : https://www.youtube.com/watch?v=3PGQxWeKmRs  
+
+The Youtube Link for final Project is :   
+
 
 For Lab2:
 Press 1 to show all the Transmittance Effects, including reflection, refraction, fresnel, Chromatic Dispersion  
@@ -35,7 +40,8 @@ Press 3 With the parameter GL_LINEAR_MIPMAP_NEAREST
 Press 4 With the parameter GL_NEAREST_MIPMAP_LINEAR  
 Press 5 With the parameter GL_LINEAR_MIPMAP_LINEAR  
 
-
+For final Project:
+Press 1 to zoom in and 2 to zoom out.   
 
 
 

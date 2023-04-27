@@ -27,7 +27,7 @@ void main(void)
     eye = normalize(eye);
 
     float area = 0.5f * length(triangleNormal);  //area of the triangle.
-    float numberOfTesselations = area*350.f; // 350.f gave good result for the test objects used // need to try different values now.
+    float numberOfTesselations = area*350.f; // 350.f gave good result for the test objects used
 
     if(dot(normalize(triangleNormal), eye) > 0.2) // if the face is facing the other way, we do not need any fur
         numberOfTesselations = 1.f;
