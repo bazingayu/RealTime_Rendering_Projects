@@ -1,4 +1,4 @@
-this is the code for TCD CS7GV3 realtime rendering **Lab2 and Lab3**  
+showcase the C++ + OPENGL skills.  Developed some fundamental effects for real time rendering.
 
 Lab2 and Lab3 use different main.cpp   
 
