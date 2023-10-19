@@ -13,15 +13,6 @@ Final Project : source/Final.cpp
 
 You can easily deploy the code by changing the *executable* parameter to different main function in Cmakelist.txt
 
-The Youtube Link for Lab2 is : https://www.youtube.com/watch?v=FPpnyY7bS_w  
-
-The Youtube Link for Lab3 is : https://www.youtube.com/watch?v=fRUcdvhmn9w  
-
-The Youtube Link for Lab4 is : https://www.youtube.com/watch?v=3PGQxWeKmRs  
-
-The Youtube Link for final Project is :   
-
-
 For Lab2:
 Press 1 to show all the Transmittance Effects, including reflection, refraction, fresnel, Chromatic Dispersion  
 Press 2 to show all the reflection effects for different objects  
